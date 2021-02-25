@@ -1,8 +1,38 @@
 import typing
 
+import yaml
 import numpy as np
 import pybullet
 from scipy.spatial.transform import Rotation
+
+
+def calib_data_to_matrix(data: dict) -> np.ndarray:
+    """Extract a matrix from a camera parameter dict (as loaded from YAML)."""
+    return np.array(data["data"]).reshape(data["rows"], data["cols"])
+
+
+def load_camera_pose_from_calibration_file(
+    filename: str,
+) -> typing.Tuple[np.ndarray, np.ndarray]:
+    """Load camera position and orientation from calibration YAML file.
+
+    Args:
+        filename: Path to the camera parameter file.
+
+    Returns:
+        tuple: A tuple (position, orientation), where orientation is given as a
+        quaternion of format (x, y, z, w).
+    """
+    with open(filename, "r") as fh:
+        data = yaml.load(fh)
+
+    tf_world_to_cam = calib_data_to_matrix(data["tf_world_to_camera"])
+    tf_cam_to_world = np.linalg.inv(tf_world_to_cam)
+
+    position = tf_cam_to_world[:3, 3]
+    orientation = Rotation.from_matrix(tf_cam_to_world[:3, :3]).as_quat()
+
+    return position, orientation
 
 
 class Camera(object):
